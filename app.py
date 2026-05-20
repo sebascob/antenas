@@ -250,32 +250,59 @@ elif modulo == "6. Presupuesto de Enlace (Link Budget)":
             st.error("🔴 ¡ENLACE INVIABLE! La señal se pierde en el camino y no llega con suficiente fuerza.")
 
 # ==========================================
-# MÓDULO 7: ANTENAS
+# MÓDULO 7: ANTENAS (VERSIÓN 3D OPTIMIZADA)
 # ==========================================
 elif modulo == "7. Visualización de Antenas":
-    st.title("📡 7. Diseño e Integración de Antenas")
-    
+    st.title("📡 7. Diseño e Integración de Antenas (Modelado 3D)")
+
     with st.expander("📖 Módulo Educativo: Fundamento Teórico"):
-        st.write("Las antenas concentran la energía electromagnética en direcciones específicas. Esto se conoce como el Diagrama de Radiación.")
+        st.write("Las antenas no radian con la misma fuerza en todas las direcciones. El diagrama de radiación en 3D nos permite visualizar el volumen de energía en el espacio (los lóbulos principales y secundarios).")
+        st.latex(r"G(\theta, \phi) = \text{Ganancia en función de los ángulos del espacio}")
 
-    st.write("### Simulación Integrada de Patrón de Radiación (Datos de Software Especializado)")
-    st.info("Nota Pedagógica: Los siguientes gráficos simulan la exportación de matrices numéricas generadas en software como 4nec2 o CST Studio.")
+    st.write("### Simulación de Patrón de Radiación 3D")
+    st.info("💡 Usa el ratón dentro del gráfico para rotar, hacer zoom y analizar la antena desde cualquier ángulo.")
 
-    tipo_antena = st.selectbox("Seleccione el Tipo de Antena a Visualizar:", ["Dipolo de Media Onda", "Antena Parabólica Direccional"])
+    tipo_antena = st.selectbox("Seleccione el Tipo de Antena a Visualizar en 3D:", ["Dipolo de Media Onda", "Antena Parabólica Direccional"])
 
-    # Generación de coordenadas polares matemáticas para simular el diagrama
-    theta_vector = np.linspace(0, 2*np.pi, 200)
-    
+    # Generación de la malla esférica (Theta y Phi para cubrir todo el espacio 3D)
+    theta = np.linspace(0, np.pi, 60)
+    phi = np.linspace(0, 2*np.pi, 60)
+    THETA, PHI = np.meshgrid(theta, phi)
+
+    # Lógica matemática para dar forma al volumen de radiación 3D
     if tipo_antena == "Dipolo de Media Onda":
-        # Forma de ocho (8)
-        r_antena = np.abs(np.sin(theta_vector))
-        st.write("*Ganancia típica:* 2.15 dBi. Ideal para cobertura omnidireccional en el plano horizontal.")
+        # Forma de "Rosquilla" o Toroide matemática (sin(theta))
+        R = np.abs(np.sin(THETA))
+        st.write("*Análisis Técnico:* Nota cómo el dipolo no irradia nada hacia arriba ni hacia abajo (eje Z), concentrando toda la energía en forma de rosquilla alrededor del eje horizontal.")
     else:
-        # Lóbulo muy cerrado (Direccional)
-        r_antena = np.exp(-10 * (theta_vector - np.pi)**2) + 0.05 * np.abs(np.sin(6*theta_vector))
-        st.write("*Ganancia típica:* > 24 dBi. Altamente directiva, ideal para radioenlaces punto a punto de larga distancia.")
+        # Antena Parabólica / Lóbulo Altamente Direccional (Gausiana centrada)
+        # Concentramos la energía en una sola dirección espacial
+        R = np.exp(-6 * ((THETA - np.pi/2)*2 + (PHI - np.pi)*2)) + 0.1
+        st.write("*Análisis Técnico:* Un lóbulo de radiación extremadamente estrecho (Directivo). Diseñado para apuntar directamente a otra antena a kilómetros de distancia sin desperdiciar energía.")
 
-    # Gráfico polar interactivo con Plotly
-    fig = go.Figure(data=go.Scatterpolar(r=r_antena, theta=np.degrees(theta_vector), mode='lines', line_color='red'))
-    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, title=f"Diagrama de Radiación 2D - {tipo_antena}")
-    st.plotly_chart(fig)
+    # Conversión de Coordenadas Esféricas (R, Theta, Phi) a Cartesianas (X, Y, Z) para graficar en 3D
+    X = R * np.sin(THETA) * np.cos(PHI)
+    Y = R * np.sin(THETA) * np.sin(PHI)
+    Z = R * np.cos(THETA)
+
+    # Crear la superficie interactiva 3D con Plotly
+    fig_3d = go.Figure(data=[go.Surface(
+        x=X, y=Y, z=Z,
+        colorscale='Jet',
+        colorbar=dict(title="Ganancia Relativa")
+    )])
+
+    # Ajustes estéticos del espacio 3D
+    fig_3d.update_layout(
+        title=f"Patrón de Radiación Espacial 3D - {tipo_antena}",
+        scene=dict(
+            xaxis=dict(title='Eje X', backgroundcolor="rgb(230, 230,230)"),
+            yaxis=dict(title='Eje Y', backgroundcolor="rgb(230, 230,230)"),
+            zaxis=dict(title='Eje Z', backgroundcolor="rgb(230, 230,230)"),
+            aspectratio=dict(x=1, y=1, z=1)
+        ),
+        margin=dict(l=0, r=0, b=0, t=40),
+        height=600
+    )
+
+    st.plotly_chart(fig_3d, use_container_width=True)
